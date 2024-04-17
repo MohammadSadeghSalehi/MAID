@@ -1,3 +1,4 @@
+import torch
 def psnr(img1, img2):
     img1 = torch.clip(img1, 0, 1)
     img2 = torch.clip(img2, 0, 1)
