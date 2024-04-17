@@ -9,7 +9,6 @@ filter_size = 7
 # device = torch.device("mps")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Define the upper level objective function
 class UpperLevelObjective(nn.Module):
     def __init__(self, lower_level_obj, x_true):
         super(UpperLevelObjective, self).__init__()
@@ -51,6 +50,26 @@ class LowerLevelObjective_FOE(nn.Module):
     def forward(self, x, theta):
         return (0.5 * torch.linalg.norm(x - self.y)**2 + 0.5 * self.FOE(torch.reshape(x, (x.shape[0], int(np.sqrt(x.shape[1])), int(np.sqrt(x.shape[1])))).unsqueeze(1), theta)) / x.shape[0]
 
+def jacobian(self, x,theta,d):
+    x.requires_grad_(True)
+    theta.requires_grad_(True)
+    grad_x = torch.autograd.grad(outputs= self.lower_level_obj(x,self.theta), inputs=x, grad_outputs=None, create_graph=True, retain_graph=True, only_inputs=True, allow_unused=True)[0]
+    grad_vector_dot = torch.dot(grad_x.flatten(), d.flatten())
+    grad_weights = torch.autograd.grad(outputs=grad_vector_dot, inputs=self.lower_level_obj.FOE.conv.weight, grad_outputs=None, create_graph=True, retain_graph=True, only_inputs=True, allow_unused=True)[0]
+    grad_params = torch.autograd.grad(outputs=grad_vector_dot, inputs=self.lower_level_obj.FOE.params, grad_outputs=None, create_graph=True, retain_graph=True, only_inputs=True, allow_unused=True)[0]
+    jvp = torch.cat((grad_params.flatten(), grad_weights.flatten()))
+    return jvp.detach()
+def jacobiantrans(self, x,theta,d):
+    # transpose of jacobian
+    x.to(device).requires_grad_(True)
+    theta = theta.requires_grad_(True).to(device)
+    out = self.lower_level_obj(x,theta).to(device)
+    grad_weights = torch.autograd.grad(outputs=out, inputs=self.lower_level_obj.FOE.conv.weight, grad_outputs=None, create_graph=True, retain_graph=True, only_inputs=True, allow_unused=True)[0]
+    grad_params = torch.autograd.grad(outputs=out, inputs=self.lower_level_obj.FOE.params, grad_outputs=None, create_graph=True, retain_graph=True, only_inputs=True, allow_unused=True)[0]
+    cat = torch.cat((grad_params.flatten(), grad_weights.flatten()))
+    gradvp = torch.dot(cat.flatten(),d.flatten())
+    jtvp = torch.autograd.grad(outputs=gradvp, inputs=x, grad_outputs=torch.ones(gradvp.shape).requires_grad_(True), create_graph=True, retain_graph=True, only_inputs=True, allow_unused=True)[0]
+    return jtvp.detach()
 # Define the path to the Kodak dataset folder
 kodak_data_path = f"{os.getcwd()}/Kodak_dataset"
 transform = transforms.Compose([
@@ -59,7 +78,6 @@ transform = transforms.Compose([
     transforms.ToTensor(),  # Convert to PyTorch tensor (values between 0 and 1)
 ])
 
-# Step 3: Load and preprocess the images from the Kodak dataset
 kodak_images = []
 for filename in os.listdir(kodak_data_path):
     image_path = os.path.join(kodak_data_path, filename)
@@ -69,7 +87,6 @@ for filename in os.listdir(kodak_data_path):
 plt.imshow(kodak_images[-1].squeeze(0).detach().numpy(), cmap='gray', vmin=0, vmax=1)
 plt.show()
 print(torch.min(kodak_images[-1]), torch.max(kodak_images[-1]))
-# Step 4: Stack the images into a tensor and reshape to (num_images, 128*128)
 num_images = len(kodak_images)
 num_images = 20
 kodak_images_tensor = torch.stack(kodak_images)
@@ -142,24 +159,22 @@ def FISTA(self,theta, x, tol, max_iter):
         del p
     self.ll_calls += k
     return x.detach()
-for index, postfix in enumerate(["0000_MAID", "0101_MAID", "0303_MAID", "0505_MAID", "0101_MAID_fixed", "0303_MAID_fixed", "0505_MAID_fixed"]):
+for index, postfix in enumerate(["0000_FOE", "0101_FOE", "0303_FOE", "0505_FOE", "0101_FOE_fixed", "0303_FOE_fixed", "0505_FOE_fixed"]):
     if index == 4:
-        model = MAID(theta, x, lower_level_obj, upper_level_obj, FISTA, Lg,max_iter= 1000, epsilon= 1e-1, delta = 1e-1, beta= 0.01, rho= 0.5,tau= 0.5, save_postfix=postfix)
+        model = MAID(theta, x, lower_level_obj, upper_level_obj, FISTA, Lg,max_iter= 1000, epsilon= 1e-1, delta = 1e-1, beta= 0.01, rho= 0.5,tau= 0.5, save_postfix=postfix, psnr_log = True, jac = jacobian, jact= jacobiantrans)
         model.fixed_eps = True
     elif index == 5:
-        model = MAID(theta, x, lower_level_obj, upper_level_obj, Lg,max_iter= 1000, epsilon= 1e-3, delta = 1e-3, beta= 0.01, rho= 0.5,tau= 0.5, save_postfix=postfix)
+        model = MAID(theta, x, lower_level_obj, upper_level_obj, Lg,max_iter= 1000, epsilon= 1e-3, delta = 1e-3, beta= 0.01, rho= 0.5,tau= 0.5, save_postfix=postfix, psnr_log = True, jac = jacobian, jact= jacobiantrans)
         model.fixed_eps = True
     elif index == 6:
-        model = MAID(theta, x, lower_level_obj, upper_level_obj, Lg,max_iter= 1000, epsilon= 1e-5, delta = 1e-5, beta= 0.01, rho= 0.5,tau= 0.5, save_postfix=postfix)
+        model = MAID(theta, x, lower_level_obj, upper_level_obj, Lg,max_iter= 1000, epsilon= 1e-5, delta = 1e-5, beta= 0.01, rho= 0.5,tau= 0.5, save_postfix=postfix, psnr_log = True, jac = jacobian, jact= jacobiantrans)
         model.fixed_eps = True
     elif index == 3:
-        model = MAID(theta, x, lower_level_obj, upper_level_obj, Lg,max_iter= 1000, epsilon= 1e-5, delta = 1e-5, beta= 0.01, rho= 0.5,tau= 0.5, save_postfix=postfix)
+        model = MAID(theta, x, lower_level_obj, upper_level_obj, Lg,max_iter= 1000, epsilon= 1e-5, delta = 1e-5, beta= 0.01, rho= 0.5,tau= 0.5, save_postfix=postfix, psnr_log = True, jac = jacobian, jact= jacobiantrans)
     elif index == 2:
-        model = MAID(theta, x, lower_level_obj, upper_level_obj, Lg,max_iter= 1000, epsilon= 1e-3, delta = 1e-3, beta= 0.01, rho= 0.5,tau= 0.5, save_postfix=postfix)
+        model = MAID(theta, x, lower_level_obj, upper_level_obj, Lg,max_iter= 1000, epsilon= 1e-3, delta = 1e-3, beta= 0.01, rho= 0.5,tau= 0.5, save_postfix=postfix, psnr_log = True, jac = jacobian, jact= jacobiantrans)
     elif index == 1:
-        model = MAID(theta, x, lower_level_obj, upper_level_obj, Lg,max_iter= 1000, epsilon= 1e-1, delta = 1e-1, beta= 0.01, rho= 0.5,tau= 0.5, save_postfix=postfix)
-        # model.fixed_eps = True
+        model = MAID(theta, x, lower_level_obj, upper_level_obj, Lg,max_iter= 1000, epsilon= 1e-1, delta = 1e-1, beta= 0.01, rho= 0.5,tau= 0.5, save_postfix=postfix, psnr_log = True, jac = jacobian, jact= jacobiantrans)
     elif index == 0:
-        model = MAID(theta, x, lower_level_obj, upper_level_obj, FISTA, Lg,max_iter= 10000, epsilon= 1e0, delta = 1e0, beta= 0.01, rho= 0.5,tau= 0.5, save_postfix=postfix)
-        # model.fixed_eps = True
+        model = MAID(theta, x, lower_level_obj, upper_level_obj, FISTA, Lg,max_iter= 10000, epsilon= 1e0, delta = 1e0, beta= 0.01, rho= 0.5,tau= 0.5, save_postfix=postfix, psnr_log = True, jac = jacobian, jact= jacobiantrans)
     model.main()

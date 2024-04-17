@@ -18,7 +18,7 @@ from Utils import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class MAID(nn.Module):
-    def __init__(self,theta, x0, lower_level_obj, upper_level_obj,LL_solver,Lg,epsilon = 1e-1, delta = 1e-1, eta = 1e-4, rho = 0.9, tau = 0.5, max_iter = 100, beta = 0.1,save_postfix = "") -> None:
+    def __init__(self,theta, x0, lower_level_obj, upper_level_obj,LL_solver,Lg,epsilon = 1e-1, delta = 1e-1, eta = 1e-4, rho = 0.9, tau = 0.5, max_iter = 100, beta = 0.1,save_postfix = "",psnr_log =False, jac = None, jact = None) -> None:
         super().__init__()
         self.theta = theta
         self.x = x0
@@ -33,6 +33,8 @@ class MAID(nn.Module):
         self.mu = None
         self.max_iter = max_iter
         self.LL_solver = LL_solver
+        self.LL_jacobian = jac
+        self.LL_jacobiantrans = jact
         self.LL_iter = 2000
         self.Lg = Lg
         self.LAinv = 0
@@ -46,6 +48,7 @@ class MAID(nn.Module):
         self.fixed_eps = False
         self.max_ll_reached = False
         self.bt_flag = False
+        self.psnr_log = psnr_log
         self.ll_budget = 1e6
         self.max_bt_loop = 3
         self.nu = 1.05
@@ -65,6 +68,10 @@ class MAID(nn.Module):
     def call_LL_solver(self, *args, **kwargs):
         # Call the function passed to the class instance
         return self.LL_solver(self,*args, **kwargs)
+    def jacobian(self, *args, **kwargs):
+        return self.LL_jacobian(self,*args, **kwargs)
+    def jacobiantrans(self, *args, **kwargs):
+        return self.LL_jacobiantrans(self,*args, **kwargs)
     def grad_lower(self, x):
         x.to(device).requires_grad_(True)
         out = self.lower_level_obj(x,self.theta).to(device)
@@ -79,27 +86,6 @@ class MAID(nn.Module):
         grad_x = torch.autograd.grad(outputs=out, inputs=x, grad_outputs=None, create_graph=True, retain_graph=True, only_inputs=True, allow_unused=True)[0] #first get grad using autograd
         hvp = torch.autograd.grad(outputs=grad_x, inputs=x, grad_outputs=d, create_graph=False, retain_graph=False, only_inputs=True, allow_unused=False)[0]
         return hvp.detach()
-    def jacobian(self, x,theta,d):
-        x.requires_grad_(True)
-        theta.requires_grad_(True)
-        grad_x = torch.autograd.grad(outputs= self.lower_level_obj(x,self.theta), inputs=x, grad_outputs=None, create_graph=True, retain_graph=True, only_inputs=True, allow_unused=True)[0]
-        grad_vector_dot = torch.dot(grad_x.flatten(), d.flatten())
-        grad_weights = torch.autograd.grad(outputs=grad_vector_dot, inputs=self.lower_level_obj.FOE.conv.weight, grad_outputs=None, create_graph=True, retain_graph=True, only_inputs=True, allow_unused=True)[0]
-        grad_params = torch.autograd.grad(outputs=grad_vector_dot, inputs=self.lower_level_obj.FOE.params, grad_outputs=None, create_graph=True, retain_graph=True, only_inputs=True, allow_unused=True)[0]
-        jvp = torch.cat((grad_params.flatten(), grad_weights.flatten()))
-        return jvp.detach()
-    def jacobiantrans(self, x,theta,d):
-        # transpose of jacobian
-        x.to(device).requires_grad_(True)
-        theta = theta.requires_grad_(True).to(device)
-        out = self.lower_level_obj(x,theta).to(device)
-        grad_weights = torch.autograd.grad(outputs=out, inputs=self.lower_level_obj.FOE.conv.weight, grad_outputs=None, create_graph=True, retain_graph=True, only_inputs=True, allow_unused=True)[0]
-        grad_params = torch.autograd.grad(outputs=out, inputs=self.lower_level_obj.FOE.params, grad_outputs=None, create_graph=True, retain_graph=True, only_inputs=True, allow_unused=True)[0]
-        cat = torch.cat((grad_params.flatten(), grad_weights.flatten()))
-        gradvp = torch.dot(cat.flatten(),d.flatten())
-        jtvp = torch.autograd.grad(outputs=gradvp, inputs=x, grad_outputs=torch.ones(gradvp.shape).requires_grad_(True), create_graph=True, retain_graph=True, only_inputs=True, allow_unused=True)[0]
-        return jtvp.detach()
-
     def CG(self, x, b, tol):
         x = x.to(device)  # Move x tensor to GPU
         b = b.to(device)  # Move b tensor to GPU
@@ -189,7 +175,10 @@ class MAID(nn.Module):
             g = self.upper_level_obj(x_new)
             if g + torch.linalg.norm(self.grad_upper(x_new))* epsilon + self.Lg * epsilon**2/2 - g_old + torch.linalg.norm(self.grad_upper(x))* epsilon \
                 <= -beta * rho**i * self.eta*(self.eta) * torch.linalg.norm(p)**2:
-                print ('backtrack success', "iter = ", i, "loss = ", g, "psnr = ", psnr(x_new, self.upper_level_obj.x_true))
+                if self.psnr_log:
+                    print ('backtrack success', "iter = ", i, "loss = ", g, "psnr = ", psnr(x_new, self.upper_level_obj.x_true))
+                else:
+                    print ('backtrack success', "iter = ", i, "loss = ", g)
                 self.state['step_size'].append(beta * rho**i)
                 if not self.fixed_step:
                     self.beta = beta * rho**i
@@ -256,10 +245,10 @@ class MAID(nn.Module):
             epsilon = self.epsilon
             self.state['eps'].append(epsilon)
             self.state['delta'].append(self.delta)
-            if k % 3 == 0 and k > 0:
+            if k % 5 == 0 and k > 0:
                 self.state['params'] = self.theta
                 self.state['loss'] = self.loss
                 self.state['x'] = self.x.detach().cpu()
-                torch.save(self.state, f"state_dict_MAID_FOE{self.save_postfix}.pt")
+                torch.save(self.state, f"state_dict_MAID_{self.save_postfix}.pt")
         return self.theta
 
