@@ -18,7 +18,7 @@ from Utils import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class MAID(nn.Module):
-    def __init__(self,theta, x0, lower_level_obj, upper_level_obj,LL_solver,Lg,epsilon = 1e-1, delta = 1e-1, eta = 1e-4, rho = 0.9, tau = 0.5, max_iter = 100, beta = 0.1,save_postfix = "",psnr_log =False, jac = None, jact = None) -> None:
+    def __init__(self,theta, x0, lower_level_obj, upper_level_obj,LL_solver,Lg,epsilon = 1e-1, delta = 1e-1, eta = 1e-4, rho = 0.9, tau = 0.5, max_iter = 100, beta = 0.1, nu = 1.05,save_postfix = "",psnr_log =False, jac = None, jact = None) -> None:
         super().__init__()
         self.theta = theta
         self.x = x0
@@ -51,7 +51,7 @@ class MAID(nn.Module):
         self.psnr_log = psnr_log
         self.ll_budget = 1e6
         self.max_bt_loop = 3
-        self.nu = 1.05
+        self.nu = nu
         self.loss = []
         self.state = {
             "loss": [],
@@ -77,9 +77,10 @@ class MAID(nn.Module):
         out = self.lower_level_obj(x,self.theta).to(device)
         return torch.autograd.grad(outputs=out, inputs=x, grad_outputs=None, create_graph=False, retain_graph=False, only_inputs=True, allow_unused=True)[0]
     def grad_upper(self, x_tilda):
-        upper_grad =  (x_tilda - self.upper_level_obj.x_true)/x_tilda.shape[0]
-        x_tilda.detach().cpu()
-        return upper_grad.detach()
+        x_tilda.to(device).requires_grad_(True)
+        out = self.upper_level_obj(x_tilda).to(device).to(dtype=torch.float)
+        grad = torch.autograd.grad(outputs=out, inputs=x_tilda, grad_outputs=None, create_graph=False, retain_graph=False, only_inputs=True, allow_unused=True)[0]
+        return grad.detach()
     def hessian(self, x,d):
         x.to(device).requires_grad_(True)
         out = self.lower_level_obj(x,self.theta).to(device)

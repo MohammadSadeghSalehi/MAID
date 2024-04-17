@@ -118,7 +118,7 @@ x = x.to(device)
 
 
 
-for index, postfix in enumerate( ["10100_MAID", "1002_MAID", "100100_MAID", "1020_MAID", "1001_MAID", "1010_MAID", "0000_MAID", "0101_MAID", "0303_MAID", "0505_MAID", "0101_MAID_fixed", "0303_MAID_fixed", "0505_MAID_fixed"]):
+for index, postfix in enumerate( ["10100", "1002", "100100", "1020", "1001", "1010", "0000", "0101", "0303", "0505", "0101_fixed", "0303_fixed", "0505_fixed"]):
     if index == 2:
         model = MAID(theta, x, lower_level_obj, upper_level_obj,FISTA, Lg,max_iter= 1000, epsilon= 1e2, delta = 1e2, beta= 0.01, rho= 0.5,tau= 0.5, save_postfix=postfix, jac = jacobian, jact= jacobiantrans)
         # model.fixed_eps= True
