@@ -31,6 +31,7 @@ MAID solves bilevel problems with adaptive inexactness and includes a built-in l
 ├── FoE.py                   # Field of Experts denoising (parameter learning)
 ├── data/                    # Kodak dataset for image denoising
 └── README.md                # This file
+```
 
 The repository is organized as follows:
 
