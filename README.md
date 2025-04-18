@@ -1,6 +1,6 @@
 # MAID: Method of Adaptive Inexact Descent for Bilevel Optimization  [![arXiv](https://img.shields.io/badge/arXiv-PDF-b31b1b)](https://arxiv.org/abs/2308.10098)
 
-**[An Adaptively Inexact First-Order Method for Bilevel Optimization with Application to Hyperparameter Learning](https://arxiv.org/pdf/2502.09758)**  
+**[An Adaptively Inexact First-Order Method for Bilevel Optimization with Application to Hyperparameter Learning](https://arxiv.org/abs/2308.10098)**  
 _Accepted to SIAM Journal on Mathematics of Data Science (SIMODS)_
 
 This repository provides the official implementation of the algorithm proposed in the paper:
