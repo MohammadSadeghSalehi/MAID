@@ -111,10 +111,10 @@ python FoE.py
 
 For the denoising examples, ensure the Kodak_dataset/ directory contains the Kodak dataset.
 
-📚 
+ 
 #
-**How to cite**
-```bash
+**How to cite 📚**
+```
   @misc{salehi2025adaptivelyinexactfirstordermethod,
       title={An adaptively inexact first-order method for bilevel optimization with application to hyperparameter learning}, 
       author={Mohammad Sadegh Salehi and Subhadip Mukherjee and Lindon Roberts and Matthias J. Ehrhardt},
