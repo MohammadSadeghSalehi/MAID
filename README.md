@@ -1,12 +1,12 @@
-# MAID: Method of Adaptive Inexact Descent for Bilevel Optimization
+# MAID: Method of Adaptive Inexact Descent for Bilevel Optimization  [![arXiv](https://img.shields.io/badge/arXiv-PDF-b31b1b)](https://arxiv.org/abs/2308.10098)
+
+**[An Adaptively Inexact First-Order Method for Bilevel Optimization with Application to Hyperparameter Learning](https://arxiv.org/pdf/2502.09758)**  
+_Accepted to SIAM Journal on Mathematics of Data Science (SIMODS)_
 
 This repository provides the official implementation of the algorithm proposed in the paper:
 
 **An Adaptively Inexact First-Order Method for Bilevel Optimization with Application to Hyperparameter Learning**  
 Mohammad Sadegh Salehi, Subhadip Mukherjee, Lindon Roberts, Matthias J. Ehrhardt  
-
-[![An Adaptively Inexact First-Order Method for Bilevel Optimization with Application to Hyperparameter Learning](https://img.shields.io/badge/arXiv-PDF-b31b1b)](https://arxiv.org/abs/2308.10098)
-[An Adaptively Inexact First-Order Method for Bilevel Optimization with Application to Hyperparameter Learning](https://arxiv.org/pdf/2502.09758) (Accepted to SIAM Journal on Mathematics of Data Science SIMODS)
 
 
 MAID (Method of Adaptive Inexact Descent) is a first-order algorithm for bilevel optimization that adaptively adjusts both solution accuracy and step sizes. It is particularly well-suited to large-scale bilevel learning problems, such as hyperparameter optimisation in image processing and machine learning.
