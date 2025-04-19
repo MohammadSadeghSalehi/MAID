@@ -111,6 +111,9 @@ python FoE.py
 
 For the denoising examples, ensure the Kodak_dataset/ directory contains the Kodak dataset.
 
+## Perfomance comparison 
+<img src="MAIDvsHOAG.png" alt="MAID vs HOAG" width="800">
+Comparison of MAID with Hyperparameter Optimisation Approximate Gradient (HOAG) of learning FoE filters for denoising.
  
 #
 **How to cite 📚**
